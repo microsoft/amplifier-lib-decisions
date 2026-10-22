@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[project]
+name = "amplifier-lib-decisions"
+version = "0.1.0.dev0"
+description = "Portable typed decision contracts and protocol validation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+license = "MIT"
+[project.optional-dependencies]
+images = ["Pillow>=11"]
+test = ["pytest>=8", "pytest-asyncio>=0.24"]
+[tool.hatch.build.targets.wheel]
+packages = ["amplifier_decisions"]
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[project.urls]
+Repository = "https://github.com/microsoft/amplifier-lib-decisions"
