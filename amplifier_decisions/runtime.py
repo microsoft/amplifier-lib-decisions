@@ -75,15 +75,27 @@ class SystemOneBackend:
 
 
 def register(coordinator, identity, backend):
-    """Register one named backend. Caller owns closing its account transport."""
+    """Register one named backend and return its async cleanup.
+
+    If registration raises, the caller retains ownership of the backend.
+    After success, cleanup closes the backend. The caller always owns closing
+    its account transport.
+    """
     current = dict(coordinator.get_capability('decision.backends') or {})
     if not isinstance(identity, str) or not identity or identity in current:
         raise ValueError('Decision backend identifiers must be unique')
     current[identity] = backend
-    coordinator.register_capability('decision.backends', current)
-    if hasattr(coordinator, 'register_contributor'):
-        coordinator.register_contributor('observability.events', identity,
-                                         lambda: ['decision:request', 'decision:response'])
+    try:
+        coordinator.register_capability('decision.backends', current)
+        if hasattr(coordinator, 'register_contributor'):
+            coordinator.register_contributor('observability.events', identity,
+                                             lambda: ['decision:request', 'decision:response'])
+    except BaseException:
+        current = dict(coordinator.get_capability('decision.backends') or {})
+        if current.get(identity) is backend:
+            del current[identity]
+            coordinator.register_capability('decision.backends', current)
+        raise
     async def cleanup():
         current = dict(coordinator.get_capability('decision.backends') or {})
         if current.get(identity) is backend:
