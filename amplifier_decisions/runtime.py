@@ -97,9 +97,11 @@ def register(coordinator, identity, backend):
             coordinator.register_capability('decision.backends', current)
         raise
     async def cleanup():
-        current = dict(coordinator.get_capability('decision.backends') or {})
-        if current.get(identity) is backend:
-            del current[identity]
-            coordinator.register_capability('decision.backends', current)
-        await backend.close()
+        try:
+            current = dict(coordinator.get_capability('decision.backends') or {})
+            if current.get(identity) is backend:
+                del current[identity]
+                coordinator.register_capability('decision.backends', current)
+        finally:
+            await backend.close()
     return cleanup

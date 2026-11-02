@@ -50,7 +50,27 @@ schema version 2, `provider_module`, backend metadata and a local `validate`
 callable. Editors match these with saved provider accounts. Decision preferences
 accept only `model` and optional `endpoint`; credentials stay with the account.
 Discovery must not create a client, look up credentials or make a network call.
-These interfaces are development contracts, pending ecosystem review.
+An optional top-level `runtime: {kind: hook, module: hooks-...}` identifies a
+real hook module shipped in the same provider wheel. This is metadata for host
+composition, not a provider alias or permission to load a different source.
+
+`amplifier_decisions.hooks.mount_account` provides account-owned hook mounting
+without importing Core. It creates no transport while disabled, closes failed
+registration attempts, unwinds earlier owned backends after partial failure,
+and preserves other accounts and replacements. A cleanup failure is reported as
+unsafe; it cannot silently authorize ordinary fallback.
+
+A host projecting saved accounts supplies a private `_decision_account` binding
+and installs the async capability `decision.account_lifecycle(binding_id,
+hook_module, outcome, error=None)`. Outcomes are `ready`, `disabled`,
+`unavailable`, `cancelled` and `unsafe`. The host must match every expected
+binding before execution. Only literal `True` returned for `unavailable` after
+complete rollback accepts fallback. Receipt callback failure and cancellation
+always raise; incomplete cleanup also raises. Error objects stay in the private
+callback and require host redaction before display. A direct hook needs no
+callback and raises mounting failures. This does not change Core's strict chat
+provider contract or register a fake provider. These interfaces remain
+experimental and pending ecosystem review.
 
 Provider extras and the UI-use decisions extra depend on this repository's
 canonical Git `main` branch; a separate PyPI release is not required. For direct use:
