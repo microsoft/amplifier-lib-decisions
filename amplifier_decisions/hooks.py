@@ -10,6 +10,15 @@ from .config import configured_backends
 from .runtime import register
 
 
+class UnsafeAccountCleanup(RuntimeError):
+    """A factory could not release resources allocated before it returned.
+
+    Factories own partial construction: close those resources before raising a
+    normal failure, or raise this signal if cleanup cannot be completed. A host
+    must not accept ordinary fallback from an account in this state.
+    """
+
+
 async def mount_account(coordinator, config, *, provider_factory, default_id, hook_module):
     """Mount an optional account through Core's supported hook lifecycle.
 
@@ -114,7 +123,7 @@ to that private callback; they must not be rendered without host redaction.
                 await report('cancelled', error)
             finally:
                 raise interrupted if interrupted is not None else error
-        if notifying or not isinstance(error, Exception):
+        if notifying or isinstance(error, UnsafeAccountCleanup) or not isinstance(error, Exception):
             await report('unsafe', error)
             raise
         if await report('unavailable', error) is True:

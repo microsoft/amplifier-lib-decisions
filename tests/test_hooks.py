@@ -3,7 +3,7 @@ import asyncio
 
 import pytest
 
-from amplifier_decisions.hooks import mount_account
+from amplifier_decisions.hooks import UnsafeAccountCleanup, mount_account
 
 
 class Backend:
@@ -196,3 +196,29 @@ async def test_failed_withdrawal_closes_backend_and_account_but_is_unsafe():
         await cleanup()
     assert receipts == ['ready', 'unsafe']
     assert accounts[0].closed and accounts[0].backends[0].closed
+
+
+@pytest.mark.parametrize('error_type', [RuntimeError, UnsafeAccountCleanup])
+async def test_factory_partial_construction_must_report_incomplete_cleanup(error_type):
+    receipts = []
+    error = error_type('synthetic factory failure')
+
+    def factory(config):
+        # An account not returned by the factory cannot be unwound by mount.
+        raise error
+
+    async def report(binding, module, outcome, cause):
+        assert cause is error
+        receipts.append(outcome)
+        return True
+
+    coordinator = Coordinator(report)
+    arguments = dict(provider_factory=factory, default_id='default', hook_module='hooks-example-decisions')
+    if error_type is UnsafeAccountCleanup:
+        with pytest.raises(UnsafeAccountCleanup) as caught:
+            await mount_account(coordinator, config('first'), **arguments)
+        assert caught.value is error and receipts == ['unsafe']
+    else:
+        assert await mount_account(coordinator, config('first'), **arguments) is None
+        assert receipts == ['unavailable']
+    assert not coordinator.get_capability('decision.backends')

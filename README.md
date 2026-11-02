@@ -60,6 +60,12 @@ registration attempts, unwinds earlier owned backends after partial failure,
 and preserves other accounts and replacements. A cleanup failure is reported as
 unsafe; it cannot silently authorize ordinary fallback.
 
+Account factories own resources allocated before they return an account. They
+must release partial construction before raising a normal error; if that release
+fails, they raise `UnsafeAccountCleanup` from `amplifier_decisions.hooks`.
+The helper reports `unsafe` and raises, even if a host callback would otherwise
+accept fallback. It cannot clean up an account that the factory never returned.
+
 A host projecting saved accounts supplies a private `_decision_account` binding
 and installs the async capability `decision.account_lifecycle(binding_id,
 hook_module, outcome, error=None)`. Outcomes are `ready`, `disabled`,
